@@ -6,7 +6,7 @@ the command-mapping sections mock ``VisaDriver`` itself and assert wire-level SC
 """
 
 from collections.abc import Iterator
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from pyvisa.constants import InterfaceType
@@ -89,7 +89,7 @@ def sink(visa_cls: MagicMock) -> EAPSB10000VisaSink:
 def test_accepts_a_visa_config(resource) -> None:
     rm, _ = resource
     EAPSB10000Visa(VisaConfig(visa_resource=RESOURCE)).source.open()
-    rm.open_resource.assert_called_once_with(RESOURCE)
+    rm.open_resource.assert_called_once_with(RESOURCE, open_timeout=ANY)
 
 
 def test_quadrants_are_stable_and_distinct(dev: EAPSB10000Visa) -> None:
@@ -104,7 +104,7 @@ def test_both_quadrants_share_one_session_and_one_remote_lock(dev: EAPSB10000Vis
     dev.source.open()
     dev.sink.open()
 
-    rm.open_resource.assert_called_once_with(RESOURCE)
+    rm.open_resource.assert_called_once_with(RESOURCE, open_timeout=ANY)
     assert _writes(inst).count("SYST:LOCK ON") == 1
 
 

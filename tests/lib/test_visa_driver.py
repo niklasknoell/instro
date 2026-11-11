@@ -78,7 +78,9 @@ def test_construction_accepts_raw_resource_string(mock_pyvisa):
     driver.open()
 
     rm_class.assert_called_once_with("@ivi")
-    rm_instance.open_resource.assert_called_once_with("USB0::0x1234::0x5678::SERIAL::INSTR")
+    rm_instance.open_resource.assert_called_once_with(
+        "USB0::0x1234::0x5678::SERIAL::INSTR", open_timeout=TimeoutConfig().connect * 1000
+    )
 
 
 def test_write_does_not_query_resource(mock_pyvisa):
@@ -116,7 +118,7 @@ def test_open_creates_resource_and_applies_config(mock_pyvisa):
 
     assert driver.is_open is True
     rm_class.assert_called_once_with("@ivi")
-    rm_instance.open_resource.assert_called_once_with(cfg.visa_resource)
+    rm_instance.open_resource.assert_called_once_with(cfg.visa_resource, open_timeout=10 * 1000)
     assert resource.read_termination == "\r"
     assert resource.write_termination == "\n"
     assert resource.timeout == 20 * 1000

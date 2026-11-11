@@ -65,7 +65,9 @@ If your first `query` to a new instrument hangs until the timeout fires, the mos
 
 The `recv` timeout in [`TimeoutConfig`](#timeoutconfig) is specified in seconds and is forwarded to pyvisa as the session timeout (converted to milliseconds internally). It controls how long a `read` or `query` waits for the instrument to respond before raising. The default is 15 seconds.
 
-The `connect` and `send` fields are accepted by `VisaConfig` for forward compatibility but are not yet wired into per-operation overrides. Leave them at the defaults unless you have a reason to set them.
+The `connect` timeout is passed to pyvisa as the open timeout (also in seconds, default 30). On the pure-Python `"@py"` backend it bounds each TCP handshake made while opening VXI-11 (`TCPIP::<host>::INSTR`) and raw `::SOCKET` resources. Opening a VXI-11 resource makes two connections, one to the portmapper and one to the VXI-11 port, and each gets the full `connect` timeout. Other resource types ignore it. IVI backends such as NI-VISA only use the open timeout while waiting for a resource lock, which `VisaDriver` doesn't request, so `connect` has no effect there.
+
+The `send` field is accepted by `VisaConfig` for forward compatibility but isn't applied yet. Leave it at the default unless you have a reason to set it.
 
 ### Serial settings
 
@@ -149,7 +151,7 @@ Operation timeouts in seconds.
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `recv` | No | `15` | Applied as the pyvisa session timeout. Controls how long `read`/`query` wait for a response |
-| `connect` | No | `30` | Reserved for future per-operation overrides, currently not applied |
+| `connect` | No | `30` | Passed to pyvisa as the open timeout. Bounds each TCP handshake when opening VXI-11 and SOCKET resources on `"@py"`; no effect on IVI backends |
 | `send` | No | `15` | Reserved for future per-operation overrides, currently not applied |
 
 ### `SerialConfig`

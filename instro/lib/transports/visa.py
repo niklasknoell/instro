@@ -76,8 +76,13 @@ class TerminatorConfig:
 class TimeoutConfig:
     """Operation timeouts in seconds.
 
-    `recv` is applied as the pyvisa session timeout once the resource is open;
-    `connect` and `send` are reserved for future per-operation overrides.
+    Attributes:
+        connect: Passed to pyvisa as the open timeout. On the pyvisa-py (``@py``) backend it bounds
+            each TCP handshake when opening VXI-11 (``TCPIP::<host>::INSTR``) and raw ``::SOCKET``
+            resources; other resource types ignore it. IVI backends (e.g. NI-VISA) treat it as the
+            wait for a resource lock, which `VisaDriver` does not request, so it has no effect there.
+        recv: Applied as the pyvisa session timeout once the resource is open.
+        send: Reserved for future per-operation overrides; currently not applied.
     """
 
     connect: int = 30
@@ -152,9 +157,11 @@ class VisaDriver(TransportBase):
             rm, _, used_py_fallback = _open_resource_manager(cfg.visa_backend)
             inst: pyvisa.resources.MessageBasedResource | None = None
             try:
+                # pyvisa's default open_timeout is 0 ms, which pyvisa-py turns into a single
+                # ~0.1 s TCP handshake for VXI-11, too short for slow instrument LAN stacks.
                 inst = typing.cast(
                     pyvisa.resources.MessageBasedResource,
-                    rm.open_resource(cfg.visa_resource),
+                    rm.open_resource(cfg.visa_resource, open_timeout=cfg.timeout.connect * 1000),
                 )
                 _configure_resource(inst, cfg)
             except Exception as exc:

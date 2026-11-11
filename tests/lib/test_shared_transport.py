@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import threading
 from functools import cached_property
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from pyvisa.constants import InterfaceType
@@ -168,7 +168,7 @@ def test_a_devices_views_share_one_session(mock_pyvisa):
     eload.open()
 
     # One socket for the box, and the device's remote lock taken exactly once.
-    rm_instance.open_resource.assert_called_once_with(RESOURCE)
+    rm_instance.open_resource.assert_called_once_with(RESOURCE, open_timeout=ANY)
     assert resource.write.call_args_list.count(call("SYST:LOCK ON")) == 1
 
     psu.close()
