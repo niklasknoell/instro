@@ -542,17 +542,18 @@ def test_siglent_run_sets_auto_without_arm(siglent: SiglentSDS1000XE, siglent_vi
     assert writes == ["TRMD AUTO"]
 
 
-def test_siglent_single_arms_single_shot(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
+def test_siglent_single_arms_without_arm(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
+    # TRMD SINGLE arms by itself; an ARM on the armed scope forces a capture and leaves SAST? unanswered.
     siglent.single()
     writes = [c.args[0] for c in siglent_visa.write.call_args_list]
-    assert writes == ["TRMD SINGLE", "ARM"]
+    assert writes == ["TRMD SINGLE"]
 
 
 def test_siglent_digitize_returns_when_inr_bit_set(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
     siglent_visa.query.return_value = "1"  # INR? bit 0 set immediately
     siglent.digitize(timeout=1.0)
     writes = [c.args[0] for c in siglent_visa.write.call_args_list]
-    assert writes == ["TRMD SINGLE", "ARM"]
+    assert writes == ["TRMD SINGLE"]
     siglent_visa.query.assert_called_with("INR?")
 
 
@@ -585,6 +586,40 @@ def test_siglent_fetch_waveform_converts_codes(siglent: SiglentSDS1000XE, siglen
     assert len(waveform.times) == 3
     # 1 GSa/s -> 1 ns interval
     assert waveform.times[1] - waveform.times[0] == 1
+
+
+def test_siglent_fetch_waveform_times_follow_trigger_delay(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
+    # A negative TRDL moves the trigger left: -8.4 ms at 2 ms/div puts it 20 % into the 14-division screen,
+    # so the record starts 5.6 ms before it. 25 MSa/s is a 40 ns interval.
+    siglent_visa.query.side_effect = ["0", "0", "1.00E+00", "-3.00E+00", "2.00E-03", "-8.40E-03", "2.50E+07"]
+    siglent_visa.query_binary_values.return_value = [0, 25, -25]
+
+    waveform = siglent.fetch_waveform(channel=4)
+
+    assert waveform.times == [-5_600_000, -5_599_960, -5_599_920]
+    assert waveform.voltages == [3.0, 4.0, 2.0]
+
+
+def test_siglent_horizontal_position_is_negated_trigger_delay(
+    siglent: SiglentSDS1000XE, siglent_visa: MagicMock
+) -> None:
+    siglent.set_horizontal_position(8.4e-3)
+    siglent_visa.write.assert_called_once_with("TRDL -8.4000E-03")
+    siglent_visa.query.return_value = "-8.40E-03"
+    assert siglent.get_horizontal_position() == pytest.approx(8.4e-3)
+
+
+def test_siglent_get_memory_depth_parses_si_suffix(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
+    siglent_visa.query.side_effect = ["700K", "1.4M"]
+    assert siglent.get_memory_depth() == 700_000
+    assert siglent.get_memory_depth() == 1_400_000
+
+
+def test_siglent_set_channel_enabled_writes_trace(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:
+    siglent.set_channel_enabled(True, channel=3)
+    siglent.set_channel_enabled(False, channel=2)
+    writes = [c.args[0] for c in siglent_visa.write.call_args_list]
+    assert writes == ["C3:TRA ON", "C2:TRA OFF"]
 
 
 def test_siglent_measure_vpp_queries_pava(siglent: SiglentSDS1000XE, siglent_visa: MagicMock) -> None:

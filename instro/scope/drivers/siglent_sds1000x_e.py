@@ -146,6 +146,16 @@ def _parse_sample_rate(resp: str) -> float:
     return float(token)
 
 
+def _parse_memory_depth(resp: str) -> int:
+    """Parse an MSIZ? reply (e.g. ``70K``, ``1.4M``, ``14M``) to points."""
+    token = resp.strip().upper()
+    if token.startswith("MSIZ"):
+        token = token[4:].strip()
+    if token and token[-1] in _SI_MULTIPLIERS:
+        return round(float(token[:-1]) * _SI_MULTIPLIERS[token[-1]])
+    return round(float(token))
+
+
 class SiglentSDS1000XE(ScopeDriverBase):
     """SCPI driver for Siglent SDS1000X-E series oscilloscopes (SDS1104X-E and family)."""
 
@@ -228,6 +238,10 @@ class SiglentSDS1000XE(ScopeDriverBase):
     def get_probe_attenuation(self, channel: int) -> float:
         return float(self._visa.query(f"C{channel}:ATTN?"))
 
+    def set_channel_enabled(self, enabled: bool, channel: int) -> None:
+        """``C{n}:TRA``. The scope only returns waveforms of displayed channels."""
+        self._visa.write(f"C{channel}:TRA {'ON' if enabled else 'OFF'}")
+
     # --- Horizontal (timebase) settings ---
 
     def set_horizontal_scale(self, seconds_per_div: float) -> None:
@@ -236,10 +250,20 @@ class SiglentSDS1000XE(ScopeDriverBase):
     def get_horizontal_scale(self) -> float:
         return float(self._visa.query("TDIV?"))
 
+    # TRDL is the time from the trigger back to the screen center: a positive delay moves the trigger right.
+    def set_horizontal_position(self, seconds: float) -> None:
+        self._visa.write(f"TRDL {-seconds:.4E}")
+
+    def get_horizontal_position(self) -> float:
+        return -float(self._visa.query("TRDL?"))
+
     # --- Sample rate ---
 
     def get_sample_rate(self) -> float:
         return _parse_sample_rate(self._visa.query("SARA?"))
+
+    def get_memory_depth(self) -> int:
+        return _parse_memory_depth(self._visa.query("MSIZ?"))
 
     # --- Acquisition ---
 
@@ -272,13 +296,16 @@ class SiglentSDS1000XE(ScopeDriverBase):
         self._visa.write("STOP")
 
     def single(self) -> None:
+        """``TRMD SINGLE``, which arms the scope by itself.
+
+        An ``ARM`` sent while it is armed forces a capture straight away (FStop) and leaves ``SAST?`` unanswered
+        until the trigger mode changes.
+        """
         self._visa.write("TRMD SINGLE")
-        self._visa.write("ARM")
 
     def digitize(self, timeout: float) -> None:
         """Arm a single acquisition then poll ``INR?`` bit 0 (new signal acquired) until set or ``timeout``."""
-        self._visa.write("TRMD SINGLE")
-        self._visa.write("ARM")
+        self.single()
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if int(self._visa.query("INR?")) & 0x1:
@@ -312,10 +339,9 @@ class SiglentSDS1000XE(ScopeDriverBase):
         codes = self._visa.query_binary_values(f"C{channel}:WF? DAT2", datatype="b", container=list)
         self._consume_trailing_terminator()
 
-        x_origin_ns = int((trigger_delay - timebase * _HORIZONTAL_DIVISIONS / 2) * 1e9)
-        x_incr_ns = int((1.0 / sample_rate) * 1e9)
-
-        times = [x_origin_ns + i * x_incr_ns for i in range(len(codes))]
+        # The record spans the screen; a positive trigger delay moves the trigger right of center.
+        x_origin_s = -trigger_delay - timebase * _HORIZONTAL_DIVISIONS / 2
+        times = [round((x_origin_s + i / sample_rate) * 1e9) for i in range(len(codes))]
         voltages = [code * vdiv / _CODES_PER_DIV - offset for code in codes]
 
         return WaveformData(times=times, voltages=voltages)

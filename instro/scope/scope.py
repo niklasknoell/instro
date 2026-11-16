@@ -111,6 +111,15 @@ class ScopeDriverBase(abc.ABC):
     def get_probe_attenuation(self, channel: int) -> float:
         """Read back ``channel``'s probe attenuation ratio."""
 
+    def set_channel_enabled(self, enabled: bool, channel: int) -> None:
+        """Show (``True``) or hide (``False``) ``channel``'s trace.
+
+        Default raises ``NotImplementedError``; override on drivers whose
+        instrument can switch a channel's display. Some scopes only acquire and
+        return waveforms for displayed channels.
+        """
+        raise NotImplementedError("set_channel_enabled is not supported by this driver")
+
     # --- Horizontal (timebase) settings ---
 
     @abc.abstractmethod
@@ -121,6 +130,22 @@ class ScopeDriverBase(abc.ABC):
     def get_horizontal_scale(self) -> float:
         """Read back the timebase (seconds/div)."""
 
+    def set_horizontal_position(self, seconds: float) -> None:
+        """Place the trigger point horizontally: ``seconds`` from the trigger to the center of the screen.
+
+        ``0`` centers the trigger; a positive value moves the trigger left of
+        center, showing more of what follows it. Default raises
+        ``NotImplementedError``; override on drivers that support it.
+        """
+        raise NotImplementedError("set_horizontal_position is not supported by this driver")
+
+    def get_horizontal_position(self) -> float:
+        """Read back the horizontal position (seconds from the trigger to the center of the screen).
+
+        Default raises ``NotImplementedError``; override on drivers that support it.
+        """
+        raise NotImplementedError("get_horizontal_position is not supported by this driver")
+
     # --- Sample rate ---
 
     @abc.abstractmethod
@@ -130,6 +155,13 @@ class ScopeDriverBase(abc.ABC):
         This is the effective hardware rate the scope is acquiring at; it
         depends on the timebase, memory depth, and interpolation settings.
         """
+
+    def get_memory_depth(self) -> int:
+        """Read back the acquisition memory depth (points per channel).
+
+        Default raises ``NotImplementedError``; override on drivers that support it.
+        """
+        raise NotImplementedError("get_memory_depth is not supported by this driver")
 
     # --- Acquisition ---
 
