@@ -69,8 +69,8 @@ If no devices are found at all, the command prints a single error panel; on the 
 Pass the resource address from the **Recognized devices** table directly to the driver's constructor:
 
 ```python
-from instro.psu.drivers.bk_9115 import BK9115
-from instro.psu import InstroPSU
+from instro import InstroPSU
+from instro.drivers import BK9115
 
 psu = InstroPSU(name="psu", driver=BK9115("USB0::0x15EF::0x0099::INSTR"), num_channels=1)
 psu.open()
@@ -104,7 +104,7 @@ for error in result.errors:
 Each `DiscoveredInstrument` can build what you need next, so a script never re-derives the driver from the resource string:
 
 ```python
-from instro.psu import InstroPSU
+from instro import InstroPSU
 
 psu_info = next(i for i in result.instruments if i.category == "psu")
 
@@ -116,3 +116,16 @@ driver_block = psu_info.config_block()
 ```
 
 `visa_config()` returns the `VisaConfig` on its own, and `driver_class()` the driver class, when you want to construct the driver yourself.
+
+### instro pymeasure
+
+Needs the `pymeasure` extra (`uv add "instro[pymeasure]"`). See [Pymeasure Instruments](/library/pymeasure.md).
+
+`instro pymeasure map` writes an editable JSON channel map for a pymeasure instrument class. Edit each entry's `channel`, then pass the file as `channel_map=` to `attach()` or `PymeasureInstrument`. `instro pymeasure describe` prints the same information as a table.
+
+```bash
+instro pymeasure map keysight.KeysightE36312A -o psu_map.json
+instro pymeasure describe keithley.Keithley2400
+```
+
+The class is a dotted path, either full (`pymeasure.instruments.keithley.Keithley2400`) or relative to `pymeasure.instruments`. Some drivers add channels in `__init__` rather than at class level. For those, add `--resource <VISA resource>` to connect and inspect the live instance.

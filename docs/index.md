@@ -11,9 +11,9 @@ myst:
 An open-source, vendor-agnostic Python library for interfacing with test equipment.
 
 ```python
-from instro.daq.drivers.labjack import LabJackTSeriesDriver
-# from instro.daq.drivers.ni import NIDAQDriver
-from instro.daq import InstroDAQ
+from instro.drivers import LabJackTSeriesDriver
+# from instro.drivers import NIDAQDriver
+from instro import InstroDAQ
 
 daq = InstroDAQ(
   name    = "myDAQ",
@@ -100,11 +100,19 @@ sdr
 
 ```{toctree}
 :hidden:
+:caption: Ext Instruments
+
+library/pymeasure
+```
+
+```{toctree}
+:hidden:
 :caption: Library
 
 library/concepts
 library/library
 library/publishers
+library/notebook-display
 library/protocols/overview
 library/transports/overview
 library/config-files
@@ -123,6 +131,14 @@ library/exceptions
 
 examples/index
 examples/*/index
+```
+
+```{toctree}
+:hidden:
+:caption: Notebooks
+:glob:
+
+examples/notebooks/*
 ```
 
 ```{toctree}
@@ -168,7 +184,9 @@ ref/library/config
 ref/library/registry
 ref/library/exceptions
 ref/library/publishers
+ref/library/display
 ref/library/discover
+ref/library/pymeasure
 ref/library/transports
 ```
 

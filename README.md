@@ -20,10 +20,10 @@ An open-source, vendor-agnostic Python library for interfacing with test equipme
 ## Quickstart
 
 ```python
-from instro.daq.drivers.labjack import LabJackTSeriesDriver
-# from instro.daq.drivers.ni import NIDAQDriver
-from instro.daq import InstroDAQ
-from instro.lib.publishers import FilePublisher
+from instro.drivers import LabJackTSeriesDriver
+# from instro.drivers import NIDAQDriver
+from instro import InstroDAQ
+from instro.lib import FilePublisher
 
 pub = FilePublisher(format="jsonl", directory="/tmp/instro/")
 
@@ -98,6 +98,7 @@ Available packages:
 | **Plotting** | `plot` | Plotly publisher, with `anywidget` for live notebook plots |
 | **Other** | `contrib` | Community-contributed drivers |
 |  | `unstable` | Experimental unstable modules |
+|  | `pymeasure` | Publish [pymeasure](https://pymeasure.readthedocs.io) instruments through instro |
 
 See [Installation](https://instro.nominal.io/installation) for more info.
 
